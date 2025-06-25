@@ -64,11 +64,39 @@
     <div id="map" style="flex: 1;"></div>
   </div>
 
-  <script>
+<script>
 let map, geocoder, markers = [], openInfowindow = null, hoverLabel = null;
 let geocodedData = [], rawData = {};
 let labelOverlays = []; // ✅ 대상처명 라벨 오버레이 저장용
 
+// ✅ localStorage 기반 캐시 선언 (페이지 껐다 켜도 기억)
+const geocodeCache = JSON.parse(localStorage.getItem("geocodeCache") || "{}");
+
+function saveCache() {
+  localStorage.setItem("geocodeCache", JSON.stringify(geocodeCache));
+}
+
+// ✅ 캐시 기반 지오코딩 함수
+async function geocodeWithCache(address, name) {
+  const key = address + "_" + name;
+  if (geocodeCache[key]) return geocodeCache[key];
+
+  return new Promise(resolve => {
+    geocoder.addressSearch(address, (result, status) => {
+      if (status === kakao.maps.services.Status.OK) {
+        const pos = {
+          lat: parseFloat(result[0].y),
+          lng: parseFloat(result[0].x)
+        };
+        geocodeCache[key] = pos;
+        saveCache(); // ✅ 로컬 저장소에 반영
+        resolve(pos);
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
     kakao.maps.load(async () => {
       map = new kakao.maps.Map(document.getElementById('map'), {
         center: new kakao.maps.LatLng(37.5665, 126.9780),
@@ -106,24 +134,27 @@ kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
       async function processNextBatch() {
         const batch = addressQueue.slice(currentIndex, currentIndex + maxConcurrent);
-        const promises = batch.map(({ address, roadAddr, jibunAddr, sheet, item }) => {
-          return new Promise(resolve => {
-            function tryGeocode(addrList, index = 0) {
-              if (index >= addrList.length) return resolve();
-              geocoder.addressSearch(addrList[index], (result, status) => {
-                if (status === kakao.maps.services.Status.OK) {
-                  geocodedData.push({
-                    lat: parseFloat(result[0].y),
-                    lng: parseFloat(result[0].x),
-                    sheet, item
-                  });
-                  resolve();
-                } else {
-                  tryGeocode(addrList, index + 1);
-                }
-              });
-            }
+const promises = batch.map(async ({ address, roadAddr, jibunAddr, sheet, item }) => {
+  const name = item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+  const addrList = [];
+  if (roadAddr) addrList.push(roadAddr);
+  if (jibunAddr) addrList.push(jibunAddr);
 
+  let pos = null;
+  for (const addr of addrList) {
+    pos = await geocodeWithCache(addr, name);
+    if (pos) break;
+  }
+
+  if (pos) {
+    geocodedData.push({
+      lat: pos.lat,
+      lng: pos.lng,
+      sheet,
+      item
+    });
+  }
+});
             const addrCandidates = [];
             if (roadAddr) addrCandidates.push(roadAddr);
             if (jibunAddr) addrCandidates.push(jibunAddr);
