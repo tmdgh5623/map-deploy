@@ -115,10 +115,12 @@ function showUserLocation() {
 
 window.addEventListener("DOMContentLoaded", () => {
   kakao.maps.load(async () => {
-    map = new kakao.maps.Map(...);  // ✅ 이제 안전하게 사용 가능
+    const container = document.getElementById("map");
+    const options = {
       center: new kakao.maps.LatLng(37.5665, 126.9780),
       level: 7
-    });
+    };
+    map = new kakao.maps.Map(container, options);
 
     geocoder = new kakao.maps.services.Geocoder();
 
