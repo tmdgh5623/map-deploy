@@ -55,7 +55,7 @@
     </div>
   </div>
 </div>
-
+<button id="locate-me" ...>📍 내 위치</button>
   <div style="display: flex;">
     <div id="sidebar" style="width: 300px; max-height: 90vh; overflow-y: auto; background: #fff; border-right: 1px solid #ccc; padding: 10px;">
       <h3>📌 대상처 목록</h3>
@@ -359,6 +359,46 @@ function updateLabelVisibility() {
     label.setMap(show ? map : null);
   });
 }
+let myLocationMarker = null;
+
+document.getElementById("locate-me").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    alert("현재 브라우저에서 위치 정보를 사용할 수 없습니다.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const locPosition = new kakao.maps.LatLng(lat, lng);
+
+      const blueCircleIcon = new kakao.maps.MarkerImage(
+        "data:image/svg+xml;base64," + btoa(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+            <circle cx="16" cy="16" r="10" fill="#007BFF"/>
+          </svg>
+        `),
+        new kakao.maps.Size(32, 32)
+      );
+
+      if (myLocationMarker) myLocationMarker.setMap(null);
+
+      myLocationMarker = new kakao.maps.Marker({
+        position: locPosition,
+        map,
+        title: "내 위치",
+        image: blueCircleIcon
+      });
+
+      map.setCenter(locPosition);
+      map.setLevel(4);
+    },
+    error => {
+      alert("위치 정보를 가져오지 못했습니다.");
+    }
+  );
+});
 
   </script>
 </body>
