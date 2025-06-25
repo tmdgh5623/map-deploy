@@ -17,8 +17,7 @@
       box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.3);
     }
   </style>
-<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&libraries=services,clusterer"></script>
-</head>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
 <body>
 <div id="filters" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 10px; background: #f0f0f0;">
   <!-- 월 선택 필터 -->
@@ -114,8 +113,9 @@ function showUserLocation() {
   );
 }
 
- window.addEventListener("DOMContentLoaded", async () => {
-    map = new kakao.maps.Map(document.getElementById('map'), {
+window.addEventListener("DOMContentLoaded", () => {
+  kakao.maps.load(async () => {
+    map = new kakao.maps.Map(...);  // ✅ 이제 안전하게 사용 가능
       center: new kakao.maps.LatLng(37.5665, 126.9780),
       level: 7
     });
