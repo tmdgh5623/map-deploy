@@ -188,7 +188,7 @@ kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 await processNextBatch();
 renderMarkers();
 
-});
+};
 
     function getMarkerType(sheet, item, selectedMonths) {
   const 종합 = String(item["종합"] || "");
@@ -374,6 +374,7 @@ updateLabelVisibility();  // ✅ 요기 추가
     }
 
 function updateLabelVisibility() {
+
   const show = map.getLevel() <= 4;
   labelOverlays.forEach(label => {
     label.setMap(show ? map : null);
