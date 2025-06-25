@@ -155,12 +155,6 @@ const promises = batch.map(async ({ address, roadAddr, jibunAddr, sheet, item })
     });
   }
 });
-            const addrCandidates = [];
-            if (roadAddr) addrCandidates.push(roadAddr);
-            if (jibunAddr) addrCandidates.push(jibunAddr);
-            tryGeocode(addrCandidates);
-          });
-        });
 
         await Promise.all(promises);
         currentIndex += maxConcurrent;
