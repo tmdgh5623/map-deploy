@@ -374,12 +374,11 @@ updateLabelVisibility();  // ✅ 요기 추가
     }
 
 function updateLabelVisibility() {
-
   const show = map.getLevel() <= 4;
   labelOverlays.forEach(label => {
     label.setMap(show ? map : null);
-      });
-    }
+  });
+}
   </script>
 </body>
 </html>
