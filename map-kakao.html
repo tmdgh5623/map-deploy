@@ -17,7 +17,7 @@
       box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.3);
     }
   </style>
-<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
 </head>
 <body>
 <div id="filters" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 10px; background: #f0f0f0;">
@@ -39,13 +39,7 @@
       <label><input type="checkbox" name="month" value="12" onchange="renderMarkers()">12월</label>
     </span>
   </div>
-<!-- ✅ 내 위치 버튼 -->
-<div style="padding: 10px;">
-  <button onclick="showUserLocation()" style="padding: 6px 12px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
-  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDdCRkYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==" width="16" height="16">
-  내 위치
-</button>
-</div>
+
   <!-- 검색창 -->
   <div>
     대상처명: <input type="text" id="search" oninput="renderMarkers()" placeholder="검색어 입력">
@@ -70,71 +64,22 @@
     <div id="map" style="flex: 1;"></div>
   </div>
 
-<script>
-  let map, geocoder, markers = [], openInfowindow = null, hoverLabel = null;
-  let geocodedData = [], rawData = {};
-  let labelOverlays = [];
+  <script>
+let map, geocoder, markers = [], openInfowindow = null, hoverLabel = null;
+let geocodedData = [], rawData = {};
+let labelOverlays = []; // ✅ 대상처명 라벨 오버레이 저장용
 
-function showUserLocation() {
-  if (!navigator.geolocation) {
-    alert("❌ 이 브라우저는 위치 정보를 지원하지 않습니다.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const latlng = new kakao.maps.LatLng(lat, lng);
-
-      // ✅ 파란 동그라미 마커
-      const userIcon = new kakao.maps.MarkerImage(
-        "data:image/svg+xml;base64," + btoa(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
-            <circle cx="12" cy="12" r="10" fill="#007BFF" stroke="white" stroke-width="2"/>
-          </svg>
-        `),
-        new kakao.maps.Size(24, 24)
-      );
-
-      const marker = new kakao.maps.Marker({
-        position: latlng,
-        map: map,
-        title: "내 위치",
-        image: userIcon
+    kakao.maps.load(async () => {
+      map = new kakao.maps.Map(document.getElementById('map'), {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 7
       });
 
-      map.setCenter(latlng);
-      map.setLevel(4);
-    },
-    (error) => {
-      alert("⚠️ 위치 접근을 허용해야 내 위치를 표시할 수 있습니다.");
-      console.error(error);
-    }
-  );
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  kakao.maps.load(async () => {
-    const container = document.getElementById("map");
-    const options = {
-      center: new kakao.maps.LatLng(37.5665, 126.9780),
-      level: 7
-    };
-    map = new kakao.maps.Map(container, options);
-
-    geocoder = new kakao.maps.services.Geocoder();
-
-function updateLabelVisibility() {
-  const show = map.getLevel() <= 4;
-  labelOverlays.forEach(label => {
-    label.setMap(show ? map : null);
-  });
-}
+      geocoder = new kakao.maps.services.Geocoder();
 
 kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
-      const response = await fetch("https://script.google.com/macros/s/AKfycbxt2faMDlOQbDObnqqL9bKmjo1OuFsdL-xs2mdYrLLHmh7zIKAdC4hMA92MaYMdcHPx7Q/exec");
+      const response = await fetch("https://script.google.com/macros/s/AKfycbw12xR7tz1fq1iQNbY-WIZUQ4C5wMFOE2vLr70ydsKNgdOx17t2iq3dnok0sjMgpVr_Ig/exec");
       rawData = await response.json();
 
       const addressSet = new Set();
@@ -197,9 +142,9 @@ kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
 await processNextBatch();
 renderMarkers();
-  });
-}); 
-</script>
+
+});
+
     function getMarkerType(sheet, item, selectedMonths) {
   const 종합 = String(item["종합"] || "");
   const 작동 = String(item["작동"] || "");
@@ -382,6 +327,13 @@ updateLabelVisibility();  // ✅ 요기 추가
       if (type === "전체") return new kakao.maps.MarkerImage(triangle, size);
       return null;
     }
+
+function updateLabelVisibility() {
+  const show = map.getLevel() <= 4;
+  labelOverlays.forEach(label => {
+    label.setMap(show ? map : null);
+  });
+}
 
   </script>
 </body>
