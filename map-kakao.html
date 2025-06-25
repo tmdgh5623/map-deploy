@@ -125,6 +125,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
     geocoder = new kakao.maps.services.Geocoder();
 
+function updateLabelVisibility() {
+  const show = map.getLevel() <= 4;
+  labelOverlays.forEach(label => {
+    label.setMap(show ? map : null);
+  });
+}
+
 kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
       const response = await fetch("https://script.google.com/macros/s/AKfycbxt2faMDlOQbDObnqqL9bKmjo1OuFsdL-xs2mdYrLLHmh7zIKAdC4hMA92MaYMdcHPx7Q/exec");
@@ -376,12 +383,6 @@ updateLabelVisibility();  // ✅ 요기 추가
       return null;
     }
 
-function updateLabelVisibility() {
-  const show = map.getLevel() <= 4;
-  labelOverlays.forEach(label => {
-    label.setMap(show ? map : null);
-  });
-}
   </script>
 </body>
 </html>

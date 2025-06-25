@@ -18,6 +18,7 @@
     }
   </style>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
+</head>
 <body>
 <div id="filters" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 10px; background: #f0f0f0;">
   <!-- 월 선택 필터 -->
@@ -123,6 +124,13 @@ window.addEventListener("DOMContentLoaded", () => {
     map = new kakao.maps.Map(container, options);
 
     geocoder = new kakao.maps.services.Geocoder();
+
+function updateLabelVisibility() {
+  const show = map.getLevel() <= 4;
+  labelOverlays.forEach(label => {
+    label.setMap(show ? map : null);
+  });
+}
 
 kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
 
@@ -375,12 +383,6 @@ updateLabelVisibility();  // ✅ 요기 추가
       return null;
     }
 
-function updateLabelVisibility() {
-  const show = map.getLevel() <= 4;
-  labelOverlays.forEach(label => {
-    label.setMap(show ? map : null);
-  });
-}
   </script>
 </body>
 </html>
