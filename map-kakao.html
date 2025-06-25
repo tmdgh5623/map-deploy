@@ -114,8 +114,9 @@ function showUserLocation() {
   );
 }
 
-window.onload = () => {
-  kakao.maps.load(async () => {
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    kakao.maps.load(async () => {
     map = new kakao.maps.Map(document.getElementById('map'), {
       center: new kakao.maps.LatLng(37.5665, 126.9780),
       level: 7
@@ -380,7 +381,6 @@ function updateLabelVisibility() {
     label.setMap(show ? map : null);
   });
 }
-
   </script>
 </body>
 </html>
