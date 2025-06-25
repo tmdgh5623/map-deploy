@@ -113,7 +113,7 @@ function showUserLocation() {
     }
   );
 }
-
+<script>
  window.addEventListener("DOMContentLoaded", () => {
       kakao.maps.load(async () => {
     map = new kakao.maps.Map(document.getElementById('map'), {
@@ -190,7 +190,7 @@ await processNextBatch();
 renderMarkers();
   });
 });
-
+</script>
     function getMarkerType(sheet, item, selectedMonths) {
   const 종합 = String(item["종합"] || "");
   const 작동 = String(item["작동"] || "");
