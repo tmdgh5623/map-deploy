@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>카카오 지도 - 계약처 점검</title>
+  <style>
+    #map { width: 100%; height: 90vh; }
+    #filters { padding: 10px; background: #f0f0f0; }
+    label { margin-right: 10px; }
+    .label-overlay {
+      background: white;
+      border: 1px solid #888;
+      padding: 2px 6px;
+      font-size: 12px;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
+</head>
+<body>
+<div id="filters" style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 10px; background: #f0f0f0;">
+  <!-- 월 선택 필터 -->
+  <div>
+    월:
+    <span id="month-filter">
+      <label><input type="checkbox" name="month" value="01" onchange="renderMarkers()">1월</label>
+      <label><input type="checkbox" name="month" value="02" onchange="renderMarkers()">2월</label>
+      <label><input type="checkbox" name="month" value="03" onchange="renderMarkers()">3월</label>
+      <label><input type="checkbox" name="month" value="04" onchange="renderMarkers()">4월</label>
+      <label><input type="checkbox" name="month" value="05" onchange="renderMarkers()">5월</label>
+      <label><input type="checkbox" name="month" value="06" onchange="renderMarkers()">6월</label>
+      <label><input type="checkbox" name="month" value="07" onchange="renderMarkers()">7월</label>
+      <label><input type="checkbox" name="month" value="08" onchange="renderMarkers()">8월</label>
+      <label><input type="checkbox" name="month" value="09" onchange="renderMarkers()">9월</label>
+      <label><input type="checkbox" name="month" value="10" onchange="renderMarkers()">10월</label>
+      <label><input type="checkbox" name="month" value="11" onchange="renderMarkers()">11월</label>
+      <label><input type="checkbox" name="month" value="12" onchange="renderMarkers()">12월</label>
+    </span>
+  </div>
+<!-- ✅ 내 위치 버튼 -->
+<div style="padding: 10px;">
+  <button onclick="showUserLocation()" style="padding: 6px 12px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IiMwMDdCRkYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==" width="16" height="16">
+  내 위치
+</button>
+</div>
+  <!-- 검색창 -->
+  <div>
+    대상처명: <input type="text" id="search" oninput="renderMarkers()" placeholder="검색어 입력">
+  </div>
+
+  <!-- ✅ 마커 범례 -->
+  <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px;">
+    <b>📌 마커 설명</b>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIi8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNyIgZmlsbD0iI0IyMjIyMiIvPjwvc3ZnPg==" width="16" height="16"> 종합</div>
+      <div><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIGZpbGw9IiNCMjIyMjIiLz48L3N2Zz4=" width="16" height="16"> 작동</div>
+      <div><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBvbHlnb24gcG9pbnRzPSI4LDEzIDUsMyAxMSwzIiBmaWxsPSIjRkYwMDAwIi8+PC9zdmc+" width="16" height="16"> 전체</div>
+    </div>
+  </div>
+</div>
+
+  <div style="display: flex;">
+    <div id="sidebar" style="width: 300px; max-height: 90vh; overflow-y: auto; background: #fff; border-right: 1px solid #ccc; padding: 10px;">
+      <h3>📌 대상처 목록</h3>
+      <ul id="location-list" style="list-style: none; padding: 0;"></ul>
+    </div>
+    <div id="map" style="flex: 1;"></div>
+  </div>
+
+<script>
+  let map, geocoder, markers = [], openInfowindow = null, hoverLabel = null;
+  let geocodedData = [], rawData = {};
+  let labelOverlays = [];
+
+function showUserLocation() {
+  if (!navigator.geolocation) {
+    alert("❌ 이 브라우저는 위치 정보를 지원하지 않습니다.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const latlng = new kakao.maps.LatLng(lat, lng);
+
+      // ✅ 파란 동그라미 마커
+      const userIcon = new kakao.maps.MarkerImage(
+        "data:image/svg+xml;base64," + btoa(`
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+            <circle cx="12" cy="12" r="10" fill="#007BFF" stroke="white" stroke-width="2"/>
+          </svg>
+        `),
+        new kakao.maps.Size(24, 24)
+      );
+
+      const marker = new kakao.maps.Marker({
+        position: latlng,
+        map: map,
+        title: "내 위치",
+        image: userIcon
+      });
+
+      map.setCenter(latlng);
+      map.setLevel(4);
+    },
+    (error) => {
+      alert("⚠️ 위치 접근을 허용해야 내 위치를 표시할 수 있습니다.");
+      console.error(error);
+    }
+  );
+}
+
+    kakao.maps.load(async () => {
+      map = new kakao.maps.Map(document.getElementById('map'), {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 7
+      });
+
+      geocoder = new kakao.maps.services.Geocoder();
+
+kakao.maps.event.addListener(map, 'zoom_changed', updateLabelVisibility);
+
+      const response = await fetch("https://script.google.com/macros/s/AKfycbxt2faMDlOQbDObnqqL9bKmjo1OuFsdL-xs2mdYrLLHmh7zIKAdC4hMA92MaYMdcHPx7Q/exec");
+      rawData = await response.json();
+
+      const addressSet = new Set();
+      const addressQueue = [];
+
+      for (const sheet in rawData) {
+        for (const item of rawData[sheet]) {
+          const roadAddr = item["도로명주소"];
+          const jibunAddr = item["지번주소"];
+          const address = roadAddr || jibunAddr;
+          const name = item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+          if (!address || name.includes("계약해지")) continue;
+
+          const addressKey = address + "_" + name;
+          if (addressSet.has(addressKey)) continue;
+
+          addressSet.add(addressKey);
+          addressQueue.push({ address, roadAddr, jibunAddr, sheet, item });
+        }
+      }
+
+      const maxConcurrent = 5;
+      let currentIndex = 0;
+
+      async function processNextBatch() {
+        const batch = addressQueue.slice(currentIndex, currentIndex + maxConcurrent);
+        const promises = batch.map(({ address, roadAddr, jibunAddr, sheet, item }) => {
+          return new Promise(resolve => {
+            function tryGeocode(addrList, index = 0) {
+              if (index >= addrList.length) return resolve();
+              geocoder.addressSearch(addrList[index], (result, status) => {
+                if (status === kakao.maps.services.Status.OK) {
+                  geocodedData.push({
+                    lat: parseFloat(result[0].y),
+                    lng: parseFloat(result[0].x),
+                    sheet, item
+                  });
+                  resolve();
+                } else {
+                  tryGeocode(addrList, index + 1);
+                }
+              });
+            }
+
+            const addrCandidates = [];
+            if (roadAddr) addrCandidates.push(roadAddr);
+            if (jibunAddr) addrCandidates.push(jibunAddr);
+            tryGeocode(addrCandidates);
+          });
+        });
+
+        await Promise.all(promises);
+        currentIndex += maxConcurrent;
+
+        if (currentIndex < addressQueue.length) {
+          await new Promise(r => setTimeout(r, 100));
+          await processNextBatch();
+        }
+      }
+
+await processNextBatch();
+renderMarkers();
+
+});
+
+    function getMarkerType(sheet, item, selectedMonths) {
+  const 종합 = String(item["종합"] || "");
+  const 작동 = String(item["작동"] || "");
+
+  if (selectedMonths.length === 0) return "전체";
+
+  for (const month of selectedMonths) {
+    const regex = new RegExp(`\\b0?${month}\\b`);
+    if (regex.test(종합)) return "종합";
+    if (regex.test(작동)) return "작동";
+  }
+
+  return null;
+}
+
+
+function getSelectedMonths() {
+  const checkboxes = document.querySelectorAll('input[name="month"]:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function renderMarkers() {
+  labelOverlays.forEach(label => label.setMap(null));  // ✅ 이전 글자 지우기
+  labelOverlays = [];
+
+  if (openInfowindow) {
+    openInfowindow.close();
+    openInfowindow = null;
+  }
+
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+
+      const selectedMonths = getSelectedMonths();
+      const search = document.getElementById("search").value.trim();
+      const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+
+      document.getElementById("location-list").innerHTML = "";
+
+      const filtered = geocodedData.filter(({ sheet, item }) => {
+        const name = getName(sheet, item);
+        if (search && !name.includes(search)) return false;
+        if (name.includes("계약해지")) return false;
+        const markerType = getMarkerType(sheet, item, selectedMonths);
+        return markerType !== null;
+      });
+
+      filtered.forEach(({ lat, lng, sheet, item }) => {
+        const name = getName(sheet, item);
+        const type = getMarkerType(sheet, item, selectedMonths);
+        const icon = getCustomMarkerIcon(type);
+
+const marker = new kakao.maps.Marker({
+  position: new kakao.maps.LatLng(lat, lng),
+  map, title: name,
+  image: icon
+});
+
+
+const label = new kakao.maps.CustomOverlay({
+  position: marker.getPosition(),
+  content: `<div style="
+    padding: 2px 6px;
+    font-size: 13px;
+    font-weight: bold;
+    color: black;
+    white-space: nowrap;
+    border-radius: 4px;
+  ">${name}</div>`,
+  yAnchor: 2.0,
+  zIndex: 3
+});
+
+label.setMap(null);  // 기본은 숨김
+labelOverlays.push(label);
+
+        const getValue = key => item[key]?.toString().split("T")[0] || "-";
+        const 종합 = String(item["종합"] || "");
+        const 작동 = String(item["작동"] || "");
+        const 종합월 = (종합.match(/\d+/g) || []).map(m => m.padStart(2, "0"));
+        const 작동월 = (작동.match(/\d+/g) || []).map(m => m.padStart(2, "0"));
+        const types = [];
+
+        if (selectedMonths.length === 0) {
+          if (종합월.length > 0) types.push("종합");
+          if (작동월.length > 0) types.push("작동");
+        } else {
+          if (종합월.includes(selectedMonths)) types.push("종합");
+          if (작동월.includes(selectedMonths)) types.push("작동");
+        }
+
+const content = `
+  <div style="padding:10px 10px 20px; font-size:13px; line-height:1.6; max-width:320px; max-height:280px; overflow-y:auto;">
+    <table style="border-spacing:0; width:100%; table-layout:fixed;">
+      <colgroup>
+        <col style="width:80px; text-align:right;">
+        <col style="width:auto;">
+      </colgroup>
+      <tbody style="word-break:break-word;">
+        <tr><td style="text-align:right;"><b>대상처명</b></td><td style="padding-left:6px;">${name}</td></tr>
+        <tr><td style="text-align:right;"><b>계약구분</b></td><td style="padding-left:6px;">${sheet}</td></tr>
+        ${types.length ? `<tr><td style="text-align:right;"><b>점검구분</b></td><td style="padding-left:6px;">${types.join(", ")}</td></tr>` : ""}
+        ${item["주용도"] ? `<tr><td style="text-align:right;"><b>주용도</b></td><td style="padding-left:6px;">${item["주용도"]}</td></tr>` : ""}
+        ${getValue("사용승인월") ? `<tr><td style="text-align:right;"><b>사용승인일</b></td><td style="padding-left:6px;">${getValue("사용승인월")}</td></tr>` : ""}
+        ${item["도로명주소"] ? `<tr><td style="text-align:right;"><b>주소</b></td><td style="padding-left:6px;">${item["도로명주소"]}</td></tr>` : ""}
+        ${item["연락처"] ? `<tr><td style="text-align:right;"><b>연락처</b></td><td style="padding-left:6px;">${item["연락처"]}</td></tr>` : ""}
+        ${item["연면적㎡"] ? `<tr><td style="text-align:right;"><b>연면적</b></td><td style="padding-left:6px;">${item["연면적㎡"]}</td></tr>` : ""}
+        ${item["세대점검대상"] ? `<tr><td style="text-align:right;"><b>세대점검</b></td><td style="padding-left:6px;">${item["세대점검대상"]}</td></tr>` : ""}
+        <tr><td style="text-align:right;"><b>설비</b></td>
+            <td style="padding-left:6px;">옥내:${item["옥내"] || "-"}, SP:${item["S/P"] || "-"}, 가스:${item["가스"] || "-"}</td></tr>
+        ${item["건물현황"] ? `<tr><td style="text-align:right;"><b>건물현황</b></td><td style="padding-left:6px;">${item["건물현황"]}</td></tr>` : ""}
+        ${item["비고"] ? `<tr><td style="text-align:right; vertical-align:top;"><b>비고</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["비고"]}</td></tr>` : ""}
+      </tbody>
+    </table>
+  </div>`;
+
+        const infowindow = new kakao.maps.InfoWindow({ content });
+
+kakao.maps.event.addListener(marker, 'click', () => {
+  if (openInfowindow && openInfowindow.getContent() === infowindow.getContent()) {
+    openInfowindow.close();
+    openInfowindow = null;
+  } else {
+    if (openInfowindow) openInfowindow.close();
+    infowindow.open(map, marker);
+
+    // ✅ 지도 중심을 위로 올려 인포윈도우 하단 잘림 방지
+    const latlng = marker.getPosition();
+    const proj = map.getProjection();
+    const point = proj.containerPointFromCoords(latlng);
+    point.y -= 100;  // y 좌표를 위로 100px 이동
+    map.setCenter(proj.coordsFromContainerPoint(point));
+
+    openInfowindow = infowindow;
+  }
+});
+
+        kakao.maps.event.addListener(marker, 'mouseover', () => {
+          if (hoverLabel) hoverLabel.setMap(null);
+          hoverLabel = new kakao.maps.CustomOverlay({
+            position: marker.getPosition(),
+            content: `<div class="label-overlay">${name}</div>`,
+            yAnchor: 1.6
+          });
+          hoverLabel.setMap(map);
+        });
+
+        kakao.maps.event.addListener(marker, 'mouseout', () => {
+          if (hoverLabel) hoverLabel.setMap(null);
+        });
+
+        const listItem = document.createElement("li");
+        listItem.textContent = name;
+        listItem.style.padding = "6px 0";
+        listItem.style.cursor = "pointer";
+        listItem.onclick = () => {
+          map.setCenter(new kakao.maps.LatLng(lat, lng));
+          map.setLevel(4);
+          if (openInfowindow) openInfowindow.close();
+          infowindow.open(map, marker);
+          openInfowindow = infowindow;
+        };
+       document.getElementById("location-list").appendChild(listItem);
+
+markers.push(marker);  // ← 기존 코드
+
+updateLabelVisibility();  // ✅ 요기 추가
+
+      });
+    }
+
+    function getCustomMarkerIcon(type) {
+      const size = new kakao.maps.Size(32, 32);
+      const redCircle = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIi8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNyIgZmlsbD0iI0IyMjIyMiIvPjwvc3ZnPg==";
+      const redSquare = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIGZpbGw9IiNCMjIyMjIiLz48L3N2Zz4=";
+      const triangle = "data:image/svg+xml;base64," + btoa('<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg"><polygon points="16,24 10,10 22,10" fill="#FF0000"/></svg>');
+
+      if (type === "종합") return new kakao.maps.MarkerImage(redCircle, size);
+      if (type === "작동") return new kakao.maps.MarkerImage(redSquare, size);
+      if (type === "전체") return new kakao.maps.MarkerImage(triangle, size);
+      return null;
+    }
+
+function updateLabelVisibility() {
+  const show = map.getLevel() <= 4;
+  labelOverlays.forEach(label => {
+    label.setMap(show ? map : null);
+  });
+}
+
+  </script>
+</body>
+</html>
+
