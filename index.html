@@ -71,7 +71,7 @@
       z-index: 1;
     }
 
-    /* ✅ 반응형 모바일 대응 */
+/* ✅ 반응형 모바일 대응 */
 @media (max-width: 768px) {
   html, body {
     margin: 0;
@@ -81,40 +81,34 @@
   }
 
   #filters {
-  max-height: 20vh;         /* 너무 길어지지 않도록 제한 */
-  overflow-y: auto;         /* 넘치면 스크롤 */
-  flex-direction: column;
-  align-items: flex-start;
-}
+    max-height: 20vh;
+    overflow-y: auto;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-#main-container {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  height: calc(100vh - auto);
-}
+  #main-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 10vh); /* 상단 필터바 높이만큼 제외 */
+  }
 
   #sidebar {
-    width: 100%;
-    height: 0; /* 기본 접힘 */
+    flex: 0 0 0px; /* 기본 접힘 상태 */
     overflow-y: hidden;
-    transition: height 0.3s ease;
+    transition: flex-basis 0.3s ease;
     border-bottom: 1px solid #ccc;
     background: #fff;
   }
 
   #sidebar.open {
-    height: 10vh;
+    flex: 0 0 10vh; /* 펼쳐졌을 때 높이 설정 */
     overflow-y: auto;
   }
 
-#map {
-  flex: 1 1 auto;
-  height: auto;
-  min-height: 60vh;
-}
-  #sidebar.open + #map {
-    height: calc(90vh - 10vh);
+  #map {
+    flex: 1 1 auto;
+    min-height: 60vh;
   }
 
   #location-list {
