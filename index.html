@@ -81,15 +81,18 @@
   }
 
   #filters {
-    height: 10vh;
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  max-height: 20vh;         /* 너무 길어지지 않도록 제한 */
+  overflow-y: auto;         /* 넘치면 스크롤 */
+  flex-direction: column;
+  align-items: flex-start;
+}
 
-  #main-container {
-    flex-direction: column;
-    height: 90vh; /* 나머지 영역 */
-  }
+#main-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: calc(100vh - auto);
+}
 
   #sidebar {
     width: 100%;
@@ -105,12 +108,11 @@
     overflow-y: auto;
   }
 
-  #map {
-    width: 100% !important;
-    height: calc(90vh - 0px);
-    transition: height 0.3s ease;
-  }
-
+#map {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 60vh;
+}
   #sidebar.open + #map {
     height: calc(90vh - 10vh);
   }
