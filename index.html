@@ -397,22 +397,22 @@ const content = `
         <col style="width:80px; text-align:right;">
         <col style="width:auto;">
       </colgroup>
-      <tbody style="word-break:break-word;">
-        <tr><td style="text-align:right;"><b>대상처명</b></td><td style="padding-left:6px;">${name}</td></tr>
-        <tr><td style="text-align:right;"><b>계약구분</b></td><td style="padding-left:6px;">${sheet}</td></tr>
-        ${types.length ? `<tr><td style="text-align:right;"><b>점검구분</b></td><td style="padding-left:6px;">${types.join(", ")}</td></tr>` : ""}
-        ${item["주용도"] ? `<tr><td style="text-align:right;"><b>주용도</b></td><td style="padding-left:6px;">${item["주용도"]}</td></tr>` : ""}
-        ${getValue("사용승인월") ? `<tr><td style="text-align:right;"><b>사용승인일</b></td><td style="padding-left:6px;">${getValue("사용승인월")}</td></tr>` : ""}
-        ${item["도로명주소"] ? `<tr><td style="text-align:right;"><b>주소</b></td><td style="padding-left:6px;">${item["도로명주소"]}</td></tr>` : ""}
-        ${item["연락처"] ? `<tr><td style="text-align:right;"><b>연락처</b></td><td style="padding-left:6px;">${item["연락처"]}</td></tr>` : ""}
-        ${item["연면적㎡"] ? `<tr><td style="text-align:right;"><b>연면적</b></td><td style="padding-left:6px;">${item["연면적㎡"]}</td></tr>` : ""}
-        ${item["세대"] ? `<tr><td style="text-align:right;"><b>세대</b></td><td style="padding-left:6px;">${item["세대"]}세대</td></tr>` : ""}
-        ${item["세대점검대상"] ? `<tr><td style="text-align:right;"><b>세대점검</b></td><td style="padding-left:6px;">${item["세대점검대상"]}</td></tr>` : ""}
-        <tr><td style="text-align:right;"><b>설비</b></td>
-            <td style="padding-left:6px;">옥내:${item["옥내"] || "-"}, SP:${item["S/P"] || "-"}, 가스:${item["가스"] || "-"}</td></tr>
-        ${item["건물현황"] ? `<tr><td style="text-align:right;"><b>건물현황</b></td><td style="padding-left:6px;">${item["건물현황"]}</td></tr>` : ""}
-        ${item["비고"] ? `<tr><td style="text-align:right; vertical-align:top;"><b>비고</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["비고"]}</td></tr>` : ""}
-      </tbody>
+<tbody style="word-break:break-word;">
+  <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>대상처명</b></td><td style="padding-left:6px; white-space:pre-wrap;">${name}</td></tr>
+  <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>계약구분</b></td><td style="padding-left:6px; white-space:pre-wrap;">${sheet}</td></tr>
+  ${types.length ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>점검구분</b></td><td style="padding-left:6px; white-space:pre-wrap;">${types.join(", ")}</td></tr>` : ""}
+  ${item["주용도"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>주용도</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["주용도"]}</td></tr>` : ""}
+  ${getValue("사용승인월") ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>사용승인일</b></td><td style="padding-left:6px; white-space:pre-wrap;">${getValue("사용승인월")}</td></tr>` : ""}
+  ${item["도로명주소"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>주소</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["도로명주소"]}</td></tr>` : ""}
+  ${item["연락처"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>연락처</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["연락처"].replace(/\n/g, "<br>")}</td></tr>` : ""}
+  ${item["연면적㎡"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>연면적</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["연면적㎡"]}</td></tr>` : ""}
+  ${item["세대"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>세대</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["세대"]}세대</td></tr>` : ""}
+  ${item["세대점검대상"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>세대점검</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["세대점검대상"]}</td></tr>` : ""}
+  <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>설비</b></td>
+      <td style="padding-left:6px; white-space:pre-wrap;">옥내:${item["옥내"] || "-"}, SP:${item["S/P"] || "-"}, 가스:${item["가스"] || "-"}</td></tr>
+  ${item["건물현황"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>건물현황</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["건물현황"]}</td></tr>` : ""}
+  ${item["비고"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>비고</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["비고"]}</td></tr>` : ""}
+</tbody>
     </table>
   </div>`;
 
