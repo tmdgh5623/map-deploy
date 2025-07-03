@@ -68,7 +68,7 @@
       pointer-events: none;
       white-space: nowrap;
       box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.3);
-      z-index: 1;
+      z-index: 11;
     }
 
 /* ✅ 반응형 모바일 대응 */
@@ -148,8 +148,13 @@
 
   <!-- 2. 검색창 그룹 -->
   <div class="filter-group">
-    <label for="search"><strong>대상처명:</strong></label>
-    <input type="text" id="search" oninput="renderMarkers()" placeholder="검색어 입력">
+<!-- 대상처명 검색 -->
+<label for="search-name"><strong>📌 대상처명:</strong></label>
+<input type="text" id="search-name" oninput="renderMarkers()" placeholder="대상처명을 입력">
+
+<!-- 지도 주소 검색 -->
+<label for="search-addr"><strong>📍 주소검색:</strong></label>
+<input type="text" id="search-addr" placeholder="주소 입력 후 Enter" onkeydown="if(event.key==='Enter') searchAddress()" />
   </div>
 
 <!-- 3. 마커 설명 및 내 위치 버튼 -->
@@ -321,19 +326,25 @@ function renderMarkers() {
   markers.forEach(m => m.setMap(null));
   markers = [];
 
-      const selectedMonths = getSelectedMonths();
-      const search = document.getElementById("search").value.trim();
-      const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+ const selectedMonths = getSelectedMonths();
 
-      document.getElementById("location-list").innerHTML = "";
+const search = document.getElementById("search-name").value.trim();
+const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
 
-      const filtered = geocodedData.filter(({ sheet, item }) => {
-        const name = getName(sheet, item);
-        if (search && !name.includes(search)) return false;
-        if (name.includes("계약해지")) return false;
-        const markerType = getMarkerType(sheet, item, selectedMonths);
-        return markerType !== null;
-      });
+document.getElementById("location-list").innerHTML = "";
+
+const filtered = geocodedData.filter(({ sheet, item }) => {
+  const name = getName(sheet, item);
+
+  if (search && !name.includes(search)) {
+    return false;
+  }
+
+  if (name.includes("계약해지")) return false;
+
+  const markerType = getMarkerType(sheet, item, getSelectedMonths());
+  return markerType !== null;
+});
 
       filtered.forEach(({ lat, lng, sheet, item }) => {
         const name = getName(sheet, item);
@@ -343,9 +354,9 @@ function renderMarkers() {
 const marker = new kakao.maps.Marker({
   position: new kakao.maps.LatLng(lat, lng),
   map, title: name,
-  image: icon
+  image: icon,
+zIndex: 10
 });
-
 
 const label = new kakao.maps.CustomOverlay({
   position: marker.getPosition(),
@@ -358,7 +369,7 @@ const label = new kakao.maps.CustomOverlay({
     border-radius: 4px;
   ">${name}</div>`,
   yAnchor: 2.0,
-  zIndex: 1  // ✅ 추가하거나 낮게 설정
+  zIndex: 11  // ✅ 추가하거나 낮게 설정
 });
 
 label.setMap(null);  // 기본은 숨김
@@ -435,8 +446,8 @@ kakao.maps.event.addListener(marker, 'click', () => {
 hoverLabel = new kakao.maps.CustomOverlay({
   position: marker.getPosition(),
   content: `<div class="label-overlay">${name}</div>`,
-  yAnchor: 1.6,
-  zIndex: 1  // ✅ 이 값을 낮게 설정
+  yAnchor: 2.0,
+  zIndex: 12  // ✅ 이 값을 낮게 설정
 });
           hoverLabel.setMap(map);
         });
@@ -524,6 +535,42 @@ document.getElementById("locate-me").addEventListener("click", () => {
   );
 });
 
+function searchAddress() {
+  const address = document.getElementById("search-addr").value.trim();
+  if (!address) return;
+
+  const geocoder = new kakao.maps.services.Geocoder();
+  geocoder.addressSearch(address, (result, status) => {
+    if (status === kakao.maps.services.Status.OK) {
+      const { y: lat, x: lng } = result[0];
+      const moveLatLng = new kakao.maps.LatLng(lat, lng);
+
+      map.setCenter(moveLatLng);
+      map.setLevel(3);
+
+const marker = new kakao.maps.Marker({
+  map,
+  position: moveLatLng,
+  title: "검색된 주소",
+  zIndex: 1, // ✅ 가장 아래에 깔리도록 낮은 zIndex 설정
+  image: new kakao.maps.MarkerImage(
+    "data:image/svg+xml;base64," + btoa(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+        <circle cx="16" cy="16" r="10" fill="#008000"/>
+      </svg>
+    `),
+    new kakao.maps.Size(32, 32)
+  )
+});
+
+      // 기존 검색 마커 제거
+      if (window.searchMarker) window.searchMarker.setMap(null);
+      window.searchMarker = marker;
+    } else {
+      alert("주소를 찾을 수 없습니다.");
+    }
+  });
+}
   const toggleBtn = document.getElementById("toggle-list");
   const sidebar = document.getElementById("sidebar");
 
@@ -536,6 +583,14 @@ document.getElementById("locate-me").addEventListener("click", () => {
       kakao.maps.event.trigger(map, 'resize');
     }, 300);
   });
+
+document.getElementById("search-addr").addEventListener("input", () => {
+  const value = document.getElementById("search-addr").value.trim();
+  if (!value && window.searchMarker) {
+    window.searchMarker.setMap(null);
+    window.searchMarker = null;
+  }
+});
 
   </script>
 </body>
