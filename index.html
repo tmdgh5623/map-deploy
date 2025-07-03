@@ -72,38 +72,59 @@
     }
 
     /* ✅ 반응형 모바일 대응 */
-    @media (max-width: 768px) {
-      #filters {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+@media (max-width: 768px) {
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
 
-      #main-container {
-        flex-direction: column;
-      }
+  #filters {
+    height: 10vh;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
-      #sidebar {
-        width: 100% !important;
-        max-height: 200px;
-        border-right: none;
-        border-bottom: 1px solid #ccc;
-      }
+  #main-container {
+    flex-direction: column;
+    height: 90vh; /* 나머지 영역 */
+  }
 
-      #map {
-        width: 100% !important;
-        height: 70vh !important;
-      }
+  #sidebar {
+    width: 100%;
+    height: 0; /* 기본 접힘 */
+    overflow-y: hidden;
+    transition: height 0.3s ease;
+    border-bottom: 1px solid #ccc;
+    background: #fff;
+  }
 
-      #location-list {
-        max-height: 180px;
-        overflow-y: auto;
-      }
+  #sidebar.open {
+    height: 10vh;
+    overflow-y: auto;
+  }
 
-      #search {
-        width: 100%;
-        max-width: 300px;
-      }
-    }
+  #map {
+    width: 100% !important;
+    height: calc(90vh - 0px);
+    transition: height 0.3s ease;
+  }
+
+  #sidebar.open + #map {
+    height: calc(90vh - 10vh);
+  }
+
+  #location-list {
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  #search {
+    width: 100%;
+    max-width: 300px;
+  }
+}
   </style>
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
 </head>
@@ -135,12 +156,19 @@
     <input type="text" id="search" oninput="renderMarkers()" placeholder="검색어 입력">
   </div>
 
-  <!-- 3. 마커 설명 및 내 위치 버튼 -->
-  <div class="filter-group" style="margin-left: auto;">
-    <button id="locate-me" style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;">
-      📍 내 위치
-    </button>
-    <b>📌 마커 설명</b>
+<!-- 3. 마커 설명 및 내 위치 버튼 -->
+<div class="filter-group" style="margin-left: auto;">
+  <button id="locate-me" style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;">
+    📍 내 위치
+  </button>
+
+  <!-- ✅ 추가 시작 -->
+  <button id="toggle-list" style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;">
+    📋 목록 보기
+  </button>
+  <!-- ✅ 추가 끝 -->
+
+  <b>📌 마커 설명</b>
     <div style="display: flex; align-items: center; gap: 8px;">
       <div><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIi8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iNyIgZmlsbD0iI0IyMjIyMiIvPjwvc3ZnPg==" width="16" height="16"> 종합</div>
       <div><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTAiIHk9IjEwIiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIGZpbGw9IiNCMjIyMjIiLz48L3N2Zz4=" width="16" height="16"> 작동</div>
@@ -371,6 +399,7 @@ const content = `
         ${item["도로명주소"] ? `<tr><td style="text-align:right;"><b>주소</b></td><td style="padding-left:6px;">${item["도로명주소"]}</td></tr>` : ""}
         ${item["연락처"] ? `<tr><td style="text-align:right;"><b>연락처</b></td><td style="padding-left:6px;">${item["연락처"]}</td></tr>` : ""}
         ${item["연면적㎡"] ? `<tr><td style="text-align:right;"><b>연면적</b></td><td style="padding-left:6px;">${item["연면적㎡"]}</td></tr>` : ""}
+        ${item["세대"] ? `<tr><td style="text-align:right;"><b>세대</b></td><td style="padding-left:6px;">${item["세대"]}세대</td></tr>` : ""}
         ${item["세대점검대상"] ? `<tr><td style="text-align:right;"><b>세대점검</b></td><td style="padding-left:6px;">${item["세대점검대상"]}</td></tr>` : ""}
         <tr><td style="text-align:right;"><b>설비</b></td>
             <td style="padding-left:6px;">옥내:${item["옥내"] || "-"}, SP:${item["S/P"] || "-"}, 가스:${item["가스"] || "-"}</td></tr>
@@ -453,7 +482,7 @@ updateLabelVisibility();  // ✅ 요기 추가
     }
 
 function updateLabelVisibility() {
-  const show = map.getLevel() <= 4;
+  const show = map.getLevel() <= 6;
   labelOverlays.forEach(label => {
     label.setMap(show ? map : null);
   });
@@ -499,6 +528,20 @@ document.getElementById("locate-me").addEventListener("click", () => {
   );
 });
 
+  const toggleBtn = document.getElementById("toggle-list");
+  const sidebar = document.getElementById("sidebar");
+
+  toggleBtn.addEventListener("click", () => {
+    sidebar.classList.toggle("open");
+    toggleBtn.textContent = sidebar.classList.contains("open") ? "📋 목록 닫기" : "📋 목록 보기";
+
+    // 지도를 리사이즈해야 정상 반영됨
+    setTimeout(() => {
+      kakao.maps.event.trigger(map, 'resize');
+    }, 300);
+  });
+
   </script>
 </body>
 </html>
+
