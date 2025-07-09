@@ -181,14 +181,21 @@
 
   <div id="main-container">
     <div id="sidebar" style="width: 300px; max-height: 90vh; overflow-y: auto; background: #fff; border-right: 1px solid #ccc; padding: 10px;">
-      <h3>📌 대상처 목록</h3>
-      <ul id="location-list" style="list-style: none; padding: 0;"></ul>
+      <h3 style="display: flex; justify-content: space-between; align-items: center;">
+  📌 대상처 목록
+  <button id="uncheck-all" style="padding: 4px 8px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer;">
+    ❌ 전체 해제
+  </button>
+</h3>
+<ul id="location-list" style="list-style: none; padding: 0;"></ul>
+
     </div>
     <div id="map" style="flex: 1;"></div>
   </div>
 
 <script>
 let map, geocoder, markers = [], openInfowindow = null, hoverLabel = null;
+let checkedLocations = new Set();
 let geocodedData = [], rawData = {};
 let labelOverlays = []; // ✅ 대상처명 라벨 오버레이 저장용
 
@@ -289,6 +296,15 @@ const promises = batch.map(async ({ address, roadAddr, jibunAddr, sheet, item })
       }
 
 await processNextBatch();
+
+// ✅ [이 줄 추가] 초기 체크박스 상태 세팅
+geocodedData.forEach(({ sheet, item }) => {
+  const name = item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+  if (!name.includes("계약해지")) {
+    checkedLocations.add(name);
+  }
+});
+
 renderMarkers();
 
 });
@@ -333,14 +349,13 @@ const getName = (sheet, item) => item["월관리대상처"] || item["단타대�
 
 document.getElementById("location-list").innerHTML = "";
 
+
 const filtered = geocodedData.filter(({ sheet, item }) => {
   const name = getName(sheet, item);
 
-  if (search && !name.includes(search)) {
-    return false;
-  }
-
+  if (search && !name.includes(search)) return false;
   if (name.includes("계약해지")) return false;
+  if (!checkedLocations.has(name)) return false;
 
   const markerType = getMarkerType(sheet, item, getSelectedMonths());
   return markerType !== null;
@@ -369,7 +384,7 @@ const marker = new kakao.maps.Marker({
 zIndex: 10
 });
 
-const label = new kakao.maps.CustomOverlay({
+const nameLabel = new kakao.maps.CustomOverlay({
   position: marker.getPosition(),
   content: `<div style="
     padding: 2px 6px;
@@ -383,8 +398,8 @@ const label = new kakao.maps.CustomOverlay({
   zIndex: 11  // ✅ 추가하거나 낮게 설정
 });
 
-label.setMap(null);  // 기본은 숨김
-labelOverlays.push(label);
+nameLabel.setMap(null);
+labelOverlays.push(nameLabel);
 
         const getValue = key => item[key]?.toString().split("T")[0] || "-";
         const 종합 = String(item["종합"] || "");
@@ -470,23 +485,11 @@ hoverLabel = new kakao.maps.CustomOverlay({
           if (hoverLabel) hoverLabel.setMap(null);
         });
 
-        const listItem = document.createElement("li");
-        listItem.textContent = name;
-        listItem.style.padding = "6px 0";
-        listItem.style.cursor = "pointer";
-        listItem.onclick = () => {
-          map.setCenter(new kakao.maps.LatLng(lat, lng));
-          map.setLevel(4);
-          if (openInfowindow) openInfowindow.close();
-          infowindow.open(map, marker);
-          openInfowindow = infowindow;
-        };
-       document.getElementById("location-list").appendChild(listItem);
-
 markers.push(marker);  // ← 기존 코드
 
 updateLabelVisibility();  // ✅ 요기 추가
 
+renderLocationList();
       });
     }
 
@@ -508,6 +511,51 @@ function updateLabelVisibility() {
     label.setMap(show ? map : null);
   });
 }
+
+function renderLocationList() {
+  const search = document.getElementById("search-name").value.trim();
+  const listEl = document.getElementById("location-list");
+  listEl.innerHTML = "";
+
+  const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+
+  geocodedData.forEach(({ lat, lng, sheet, item }) => {
+    const name = getName(sheet, item);
+    if (name.includes("계약해지")) return;
+    if (search && !name.includes(search)) return;
+
+    const listItem = document.createElement("li");
+    listItem.style.display = "flex";
+    listItem.style.alignItems = "center";
+    listItem.style.gap = "6px";
+    listItem.style.padding = "6px 0";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = checkedLocations.has(name);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) {
+        checkedLocations.add(name);
+      } else {
+        checkedLocations.delete(name);
+      }
+      renderMarkers();
+    });
+
+    const label = document.createElement("span");
+    label.textContent = name;
+    label.style.cursor = "pointer";
+    label.onclick = () => {
+      map.setCenter(new kakao.maps.LatLng(lat, lng));
+      map.setLevel(4);
+    };
+
+    listItem.appendChild(checkbox);
+    listItem.appendChild(label);
+    listEl.appendChild(listItem);
+  });
+}
+
 let myLocationMarker = null;
 
 document.getElementById("locate-me").addEventListener("click", () => {
@@ -598,6 +646,11 @@ const marker = new kakao.maps.Marker({
     }, 300);
   });
 
+document.getElementById("uncheck-all").addEventListener("click", () => {
+  checkedLocations.clear();   // 모든 대상처 체크 해제
+  renderMarkers();            // 마커 다시 그리기 (체크된 것만 표시됨)
+});
+
 document.getElementById("search-addr").addEventListener("input", () => {
   const value = document.getElementById("search-addr").value.trim();
   if (!value && window.searchMarker) {
@@ -609,4 +662,5 @@ document.getElementById("search-addr").addEventListener("input", () => {
   </script>
 </body>
 </html>
+
 
