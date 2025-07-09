@@ -121,7 +121,7 @@
   }
 }
   </style>
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&autoload=false&libraries=services,clusterer"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=857fa34114fff62fa488d807a8666fcc&libraries=services,clusterer"></script>
 </head>
 <body>
 <!-- ✅ 상단바 필터 전체 -->
@@ -226,11 +226,11 @@ async function geocodeWithCache(address, name) {
     });
   });
 }
-    kakao.maps.load(async () => {
-      map = new kakao.maps.Map(document.getElementById('map'), {
-        center: new kakao.maps.LatLng(37.5665, 126.9780),
-        level: 7
-      });
+(async () => {
+  map = new kakao.maps.Map(document.getElementById('map'), {
+    center: new kakao.maps.LatLng(37.5665, 126.9780),
+    level: 7
+  });
 
       geocoder = new kakao.maps.services.Geocoder();
 
@@ -306,7 +306,7 @@ geocodedData.forEach(({ sheet, item }) => {
 
 renderMarkers();
 
-});
+})(); // ✅ 즉시 실행 함수 닫기
 
     function getMarkerType(sheet, item, selectedMonths) {
   const 종합 = String(item["종합"] || "");
@@ -661,4 +661,5 @@ document.getElementById("search-addr").addEventListener("input", () => {
   </script>
 </body>
 </html>
+
 
