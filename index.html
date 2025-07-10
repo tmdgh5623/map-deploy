@@ -146,14 +146,16 @@
   </div>
 
   <!-- 2. 검색창 그룹 -->
-  <div class="filter-group">
-<!-- 대상처명 검색 -->
-<label for="search-name"><strong>📌 대상처명:</strong></label>
-<input type="text" id="search-name" oninput="renderMarkers(); renderLocationList()" placeholder="대상처명을 입력">
+<div class="filter-group">
+  <!-- 대상처명 검색 -->
+  <label for="search-name"><strong>📌 대상처명:</strong></label>
+  <input type="text" id="search-name" 
+         placeholder="대상처명을 입력">
 
 <!-- 지도 주소 검색 -->
 <label for="search-addr"><strong>📍 주소검색:</strong></label>
-<input type="text" id="search-addr" placeholder="주소 입력 후 Enter" onkeydown="if(event.key==='Enter') searchAddress()" />
+<input type="text" id="search-addr" 
+       placeholder="주소 입력 후 Enter">
   </div>
 
 <!-- 3. 마커 설명 및 내 위치 버튼 -->
@@ -686,6 +688,7 @@ document.getElementById("uncheck-all").addEventListener("click", () => {
 });
 
 
+// ✅ 기존 코드
 document.getElementById("search-addr").addEventListener("input", () => {
   const value = document.getElementById("search-addr").value.trim();
   if (!value && window.searchMarker) {
@@ -694,8 +697,22 @@ document.getElementById("search-addr").addEventListener("input", () => {
   }
 });
 
-})();
+// ✅ 새로 추가: 대상처명 필터링
+document.getElementById("search-name").addEventListener("input", () => {
+  renderMarkers();
+  renderLocationList();
 });
+
+// ✅ 새로 추가: 주소검색 Enter 키 이벤트
+document.getElementById("search-addr").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    searchAddress();
+  }
+});
+
+})();  // ← 내부 async 함수 종료
+});    // ← kakao.maps.load 종료
+
 
   </script>
 </body>
