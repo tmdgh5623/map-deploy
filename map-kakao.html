@@ -130,18 +130,18 @@
   <div class="filter-group">
     <label><strong>월:</strong></label>
     <div id="month-filter">
-      <label><input type="checkbox" name="month" value="01" onchange="renderMarkers()">1월</label>
-      <label><input type="checkbox" name="month" value="02" onchange="renderMarkers()">2월</label>
-      <label><input type="checkbox" name="month" value="03" onchange="renderMarkers()">3월</label>
-      <label><input type="checkbox" name="month" value="04" onchange="renderMarkers()">4월</label>
-      <label><input type="checkbox" name="month" value="05" onchange="renderMarkers()">5월</label>
-      <label><input type="checkbox" name="month" value="06" onchange="renderMarkers()">6월</label>
-      <label><input type="checkbox" name="month" value="07" onchange="renderMarkers()">7월</label>
-      <label><input type="checkbox" name="month" value="08" onchange="renderMarkers()">8월</label>
-      <label><input type="checkbox" name="month" value="09" onchange="renderMarkers()">9월</label>
-      <label><input type="checkbox" name="month" value="10" onchange="renderMarkers()">10월</label>
-      <label><input type="checkbox" name="month" value="11" onchange="renderMarkers()">11월</label>
-      <label><input type="checkbox" name="month" value="12" onchange="renderMarkers()">12월</label>
+      <label><input type="checkbox" name="month" value="01" onchange="renderMarkers(); renderLocationList()">1월</label>
+      <label><input type="checkbox" name="month" value="02" onchange="renderMarkers(); renderLocationList()">2월</label>
+      <label><input type="checkbox" name="month" value="03" onchange="renderMarkers(); renderLocationList()">3월</label>
+      <label><input type="checkbox" name="month" value="04" onchange="renderMarkers(); renderLocationList()">4월</label>
+      <label><input type="checkbox" name="month" value="05" onchange="renderMarkers(); renderLocationList()">5월</label>
+      <label><input type="checkbox" name="month" value="06" onchange="renderMarkers(); renderLocationList()">6월</label>
+      <label><input type="checkbox" name="month" value="07" onchange="renderMarkers(); renderLocationList()">7월</label>
+      <label><input type="checkbox" name="month" value="08" onchange="renderMarkers(); renderLocationList()">8월</label>
+      <label><input type="checkbox" name="month" value="09" onchange="renderMarkers(); renderLocationList()">9월</label>
+      <label><input type="checkbox" name="month" value="10" onchange="renderMarkers(); renderLocationList()">10월</label>
+      <label><input type="checkbox" name="month" value="11" onchange="renderMarkers(); renderLocationList()">11월</label>
+      <label><input type="checkbox" name="month" value="12" onchange="renderMarkers(); renderLocationList()">12월</label>
     </div>
   </div>
 
@@ -149,7 +149,7 @@
   <div class="filter-group">
 <!-- 대상처명 검색 -->
 <label for="search-name"><strong>📌 대상처명:</strong></label>
-<input type="text" id="search-name" oninput="renderMarkers()" placeholder="대상처명을 입력">
+<input type="text" id="search-name" oninput="renderMarkers(); renderLocationList()" placeholder="대상처명을 입력">
 
 <!-- 지도 주소 검색 -->
 <label for="search-addr"><strong>📍 주소검색:</strong></label>
@@ -197,6 +197,7 @@ let map, geocoder, markers = [], openInfowindow = null, hoverLabel = null;
 let checkedLocations = new Set();
 let geocodedData = [], rawData = {};
 let labelOverlays = []; // ✅ 대상처명 라벨 오버레이 저장용
+let filteredData = [];
 
 // ✅ localStorage 기반 캐시 선언 (페이지 껐다 켜도 기억)
 const geocodeCache = JSON.parse(localStorage.getItem("geocodeCache") || "{}");
@@ -307,8 +308,13 @@ geocodedData.forEach(({ sheet, item }) => {
 });
 
 renderMarkers();
+renderLocationList(); 
 
-  })();
+document.querySelectorAll('input[name="month"]').forEach(cb => {
+  cb.addEventListener("change", () => {
+    renderMarkers();
+    renderLocationList();
+  });
 });
 
     function getMarkerType(sheet, item, selectedMonths) {
@@ -348,8 +354,6 @@ function renderMarkers() {
 
 const search = document.getElementById("search-name").value.trim();
 const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
-
-document.getElementById("location-list").innerHTML = "";
 
 
 const filtered = geocodedData.filter(({ sheet, item }) => {
@@ -491,7 +495,8 @@ markers.push(marker);  // ← 기존 코드
 
 updateLabelVisibility();  // ✅ 요기 추가
 
-renderLocationList();
+filteredData = filtered;
+
       });
     }
 
@@ -519,12 +524,16 @@ function renderLocationList() {
   const listEl = document.getElementById("location-list");
   listEl.innerHTML = "";
 
+  const selectedMonths = getSelectedMonths();  // ✅ 추가
   const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
 
   geocodedData.forEach(({ lat, lng, sheet, item }) => {
     const name = getName(sheet, item);
     if (name.includes("계약해지")) return;
     if (search && !name.includes(search)) return;
+
+    const markerType = getMarkerType(sheet, item, selectedMonths);  // ✅ 추가
+    if (markerType === null) return;  // ✅ 해당 월이 없으면 스킵
 
     const listItem = document.createElement("li");
     listItem.style.display = "flex";
@@ -649,9 +658,33 @@ const marker = new kakao.maps.Marker({
   });
 
 document.getElementById("uncheck-all").addEventListener("click", () => {
-  checkedLocations.clear();   // 모든 대상처 체크 해제
-  renderMarkers();            // 마커 다시 그리기 (체크된 것만 표시됨)
+  // 1. 전체 대상처 Set 생성 (계약해지 제외)
+  const allNames = new Set();
+  filteredData.forEach(({ lat, lng, sheet, item }) => {
+    const name = item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+    if (!name.includes("계약해지")) {
+      allNames.add(name);
+    }
+  });
+
+  // 2. 현재 체크된 대상처가 전체와 일치하는지 확인
+  const isAllChecked = checkedLocations.size === allNames.size &&
+    Array.from(allNames).every(name => checkedLocations.has(name));
+
+  if (isAllChecked) {
+    // 전체 해제
+    checkedLocations.clear();
+    document.getElementById("uncheck-all").textContent = "✅ 전체 선택";
+  } else {
+    // 전체 선택
+    checkedLocations = new Set(allNames);
+    document.getElementById("uncheck-all").textContent = "❌ 전체 해제";
+  }
+
+  renderLocationList();
+  renderMarkers();
 });
+
 
 document.getElementById("search-addr").addEventListener("input", () => {
   const value = document.getElementById("search-addr").value.trim();
@@ -661,8 +694,9 @@ document.getElementById("search-addr").addEventListener("input", () => {
   }
 });
 
+})();
+});
+
   </script>
 </body>
 </html>
-
-
