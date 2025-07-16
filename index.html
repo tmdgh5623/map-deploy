@@ -303,9 +303,9 @@ await processNextBatch();
 
 // ✅ [이 줄 추가] 초기 체크박스 상태 세팅
 geocodedData.forEach(({ sheet, item }) => {
-  const name = item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
-  if (!name.includes("계약해지")) {
-    checkedLocations.add(name);
+  const key = getKey(sheet, item);
+  if (!key.includes("계약해지")) {
+    checkedLocations.add(key);
   }
 });
 
@@ -314,6 +314,8 @@ renderLocationList();
 
 document.querySelectorAll('input[name="month"]').forEach(cb => {
   cb.addEventListener("change", () => {
+    // ✅ 월 필터 변경 시 초기화
+    resetCheckedLocationsByMonth();
     renderMarkers();
     renderLocationList();
   });
@@ -340,168 +342,188 @@ function getSelectedMonths() {
   return Array.from(checkboxes).map(cb => cb.value);
 }
 
-function renderMarkers() {
-  labelOverlays.forEach(label => label.setMap(null));  // ✅ 이전 글자 지우기
-  labelOverlays = [];
+function getKey(sheet, item) {
+  const 번호 = item["번호"] || ""; 
+  return `${sheet}_${번호}`;
+}
 
+function resetCheckedLocationsByMonth() {
+  const selectedMonths = getSelectedMonths();
+  const newChecked = new Set();
+
+  geocodedData.forEach(({ sheet, item }) => {
+    const key = getKey(sheet, item);
+    if (key.includes("계약해지")) return;
+
+    const type = getMarkerType(sheet, item, selectedMonths);
+    if (selectedMonths.length === 0 || type !== null) {
+      newChecked.add(key); // ✅ key 사용
+    }
+  });
+
+  checkedLocations = newChecked;
+}
+
+function renderMarkers() {
+  // 기존 마커/라벨 초기화
+  labelOverlays.forEach(label => label.setMap(null));
+  labelOverlays = [];
   if (openInfowindow) {
     openInfowindow.close();
     openInfowindow = null;
   }
-
   markers.forEach(m => m.setMap(null));
   markers = [];
 
- const selectedMonths = getSelectedMonths();
+  const selectedMonths = getSelectedMonths();
+  const search = document.getElementById("search-name").value.trim();
+  const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
 
-const search = document.getElementById("search-name").value.trim();
-const getName = (sheet, item) => item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
+  // ✅ 필터링
+  const filtered = geocodedData.filter(({ sheet, item }) => {
+    const name = getName(sheet, item);
+    if (search && !name.includes(search)) return false;
+    if (name.includes("계약해지")) return false;
+    const key = getKey(sheet, item);
+    if (!checkedLocations.has(key)) return false;
+    const type = getMarkerType(sheet, item, selectedMonths);
+    return type !== null || checkedLocations.has(key);
+  });
 
+  filtered.forEach(({ lat, lng, sheet, item }) => {
+    const name = getName(sheet, item);
+    const 연락처 = Array.isArray(item["연락처"])
+      ? item["연락처"].join("\n")
+      : (item["연락처"] || "").toString();
+    const 비고 = Array.isArray(item["비고"])
+      ? item["비고"].join("\n")
+      : (item["비고"] || "").toString();
+    const 건물현황 = Array.isArray(item["건물현황"])
+      ? item["건물현황"].join("\n")
+      : (item["건물현황"] || "").toString();
 
-const filtered = geocodedData.filter(({ sheet, item }) => {
-  const name = getName(sheet, item);
+    let type = getMarkerType(sheet, item, selectedMonths);
+    if (!type) type = "전체";
 
-  if (search && !name.includes(search)) return false;
-  if (name.includes("계약해지")) return false;
+    const marker = new kakao.maps.Marker({
+      position: new kakao.maps.LatLng(lat, lng),
+      map,
+      title: name,
+      image: getCustomMarkerIcon(type),
+      zIndex: 10
+    });
 
-if (!checkedLocations.has(name)) return false;
+    // ✅ 라벨 오버레이
+    const nameLabel = new kakao.maps.CustomOverlay({
+      position: marker.getPosition(),
+      content: `<div style="
+        padding: 2px 6px;
+        font-size: 13px;
+        font-weight: bold;
+        color: black;
+        white-space: nowrap;
+        border-radius: 4px;
+      ">${name}</div>`,
+      yAnchor: 2.0,
+      zIndex: 11
+    });
+    nameLabel.setMap(null);
+    labelOverlays.push(nameLabel);
 
-  const type = getMarkerType(sheet, item, selectedMonths);  // 점검구분 필터
-  return !!type;  // 종합/작동/전체 중 하나라도 있으면 표시
-});
+    const getValue = key => item[key]?.toString().split("T")[0] || "-";
 
-      filtered.forEach(({ lat, lng, sheet, item }) => {
-        const name = getName(sheet, item);
-  const 연락처 = Array.isArray(item["연락처"])
-    ? item["연락처"].join("\n")
-    : (item["연락처"] || "").toString();
+    // ✅ 점검구분(types)
+    const 종합 = String(item["종합"] || "");
+    const 작동 = String(item["작동"] || "");
+    const 종합월배열 = (종합.match(/\d+/g) || []).map(m => m.padStart(2, "0"));
+    const 작동월배열 = (작동.match(/\d+/g) || []).map(m => m.padStart(2, "0"));
+    const types = [];
 
-  const 비고 = Array.isArray(item["비고"])
-    ? item["비고"].join("\n")
-    : (item["비고"] || "").toString();
-
-  const 건물현황 = Array.isArray(item["건물현황"])
-    ? item["건물현황"].join("\n")
-    : (item["건물현황"] || "").toString();
-       const type = getMarkerType(sheet, item, selectedMonths); // 여기서 여전히 사용!
-const icon = getCustomMarkerIcon(type || "전체");  // 마커 모양 결정
-
-const marker = new kakao.maps.Marker({
-  position: new kakao.maps.LatLng(lat, lng),
-  map, title: name,
-  image: icon,
-zIndex: 10
-});
-
-const nameLabel = new kakao.maps.CustomOverlay({
-  position: marker.getPosition(),
-  content: `<div style="
-    padding: 2px 6px;
-    font-size: 13px;
-    font-weight: bold;
-    color: black;
-    white-space: nowrap;
-    border-radius: 4px;
-  ">${name}</div>`,
-  yAnchor: 2.0,
-  zIndex: 11  // ✅ 추가하거나 낮게 설정
-});
-
-nameLabel.setMap(null);
-labelOverlays.push(nameLabel);
-
-        const getValue = key => item[key]?.toString().split("T")[0] || "-";
-        const 종합 = String(item["종합"] || "");
-        const 작동 = String(item["작동"] || "");
-        const 종합월 = (종합.match(/\d+/g) || []).map(m => m.padStart(2, "0"));
-        const 작동월 = (작동.match(/\d+/g) || []).map(m => m.padStart(2, "0"));
-        const types = [];
-
-        if (selectedMonths.length === 0) {
-          if (종합월.length > 0) types.push("종합");
-          if (작동월.length > 0) types.push("작동");
-        } else {
-          if (종합월.includes(selectedMonths)) types.push("종합");
-          if (작동월.includes(selectedMonths)) types.push("작동");
-        }
-
-const content = `
-  <div style="padding:10px 10px 20px; font-size:13px; line-height:1.6; max-width:320px; max-height:280px; overflow-y:auto;">
-    <table style="border-spacing:0; width:100%; table-layout:fixed;">
-      <colgroup>
-        <col style="width:80px; text-align:right;">
-        <col style="width:auto;">
-      </colgroup>
-<tbody style="word-break:break-word;">
-  <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>대상처명</b></td><td style="padding-left:6px; white-space:pre-wrap;">${name}</td></tr>
-  <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>계약구분</b></td><td style="padding-left:6px; white-space:pre-wrap;">${sheet}</td></tr>
-  ${types.length ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>점검구분</b></td><td style="padding-left:6px; white-space:pre-wrap;">${types.join(", ")}</td></tr>` : ""}
-  ${item["주용도"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>주용도</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["주용도"]}</td></tr>` : ""}
-  ${getValue("사용승인월") ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>사용승인일</b></td><td style="padding-left:6px; white-space:pre-wrap;">${getValue("사용승인월")}</td></tr>` : ""}
-  ${item["도로명주소"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>주소</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["도로명주소"]}</td></tr>` : ""}
-  ${연락처 ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>연락처</b></td>
-<td style="padding-left:6px; white-space:pre-wrap;">${연락처.replace(/\n/g, "<br>")}</td></tr>` : ""}
-  ${item["연면적㎡"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>연면적</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["연면적㎡"]}</td></tr>` : ""}
-  ${item["세대"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>세대</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["세대"]}세대</td></tr>` : ""}
-  ${item["세대점검대상"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>세대점검</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["세대점검대상"]}</td></tr>` : ""}
-  <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>설비</b></td>
-      <td style="padding-left:6px; white-space:pre-wrap;">옥내:${item["옥내"] || "-"}, SP:${item["S/P"] || "-"}, 가스:${item["가스"] || "-"}</td></tr>
-  ${건물현황 ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>건물현황</b></td>
-<td style="padding-left:6px; white-space:pre-wrap;">${건물현황.replace(/\n/g, "<br>")}</td></tr>` : ""}
-  ${비고 ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>비고</b></td>
-<td style="padding-left:6px; white-space:pre-wrap;">${비고.replace(/\n/g, "<br>")}</td></tr>` : ""}
-</tbody>
-    </table>
-  </div>`;
-
-        const infowindow = new kakao.maps.InfoWindow({
-  content,
-  zIndex: 9999  // ✅ 반드시 추가
-});
-
-
-kakao.maps.event.addListener(marker, 'click', () => {
-  if (openInfowindow && openInfowindow.getContent() === infowindow.getContent()) {
-    openInfowindow.close();
-    openInfowindow = null;
-  } else {
-    if (openInfowindow) openInfowindow.close();
-    infowindow.open(map, marker);
-
-    // ✅ 지도 중심을 위로 올려 인포윈도우 하단 잘림 방지
-    const latlng = marker.getPosition();
-    const proj = map.getProjection();
-    const point = proj.containerPointFromCoords(latlng);
-    point.y -= 100;  // y 좌표를 위로 100px 이동
-    map.setCenter(proj.coordsFromContainerPoint(point));
-
-    openInfowindow = infowindow;
-  }
-});
-
-        kakao.maps.event.addListener(marker, 'mouseover', () => {
-          if (hoverLabel) hoverLabel.setMap(null);
-hoverLabel = new kakao.maps.CustomOverlay({
-  position: marker.getPosition(),
-  content: `<div class="label-overlay">${name}</div>`,
-  yAnchor: 2.0,
-  zIndex: 12  // ✅ 이 값을 낮게 설정
-});
-          hoverLabel.setMap(map);
-        });
-
-        kakao.maps.event.addListener(marker, 'mouseout', () => {
-          if (hoverLabel) hoverLabel.setMap(null);
-        });
-
-markers.push(marker);  // ← 기존 코드
-
-updateLabelVisibility();  // ✅ 요기 추가
-
-filteredData = filtered;
-
-      });
+    if (selectedMonths.length === 0) {
+      if (종합월배열.length > 0) types.push("종합");
+      if (작동월배열.length > 0) types.push("작동");
+    } else {
+      if (selectedMonths.some(m => 종합월배열.includes(m))) types.push("종합");
+      if (selectedMonths.some(m => 작동월배열.includes(m))) types.push("작동");
     }
+
+// ✅ "02, 08" → "02월, 08월"로 변환
+const 종합월텍스트 = 종합월배열.length > 0 ? 종합월배열.map(m => `${m}월`).join(", ") : "";
+const 작동월텍스트 = 작동월배열.length > 0 ? 작동월배열.map(m => `${m}월`).join(", ") : "";
+
+let 점검현황 = "";
+점검현황 += 종합월텍스트 ? `종합 ${종합월텍스트}` : `종합 -`;
+점검현황 += " ";
+점검현황 += 작동월텍스트 ? `작동 ${작동월텍스트}` : `작동 -`;
+
+    // ✅ 인포윈도우 내용
+    const content = `
+      <div style="padding:10px 10px 20px; font-size:13px; line-height:1.6; max-width:320px; max-height:280px; overflow-y:auto;">
+        <table style="border-spacing:0; width:100%; table-layout:fixed;">
+          <colgroup>
+            <col style="width:80px; text-align:right;">
+            <col style="width:auto;">
+          </colgroup>
+        <tbody style="word-break:break-word;">
+          <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>대상처명</b></td><td style="padding-left:6px; white-space:pre-wrap;">${name}</td></tr>
+          <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>계약구분</b></td><td style="padding-left:6px; white-space:pre-wrap;">${sheet}</td></tr>
+          ${types.length ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>점검구분</b></td><td style="padding-left:6px; white-space:pre-wrap;">${types.join(", ")}</td></tr>` : ""}
+          ${item["주용도"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>주용도</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["주용도"]}</td></tr>` : ""}
+          <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>점검현황</b></td><td style="padding-left:6px; white-space:pre-wrap;">${점검현황}</td></tr>
+          ${getValue("사용승인월") ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>사용승인일</b></td><td style="padding-left:6px; white-space:pre-wrap;">${getValue("사용승인월")}</td></tr>` : ""}
+          ${item["도로명주소"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>주소</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["도로명주소"]}</td></tr>` : ""}
+          ${연락처 ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>연락처</b></td><td style="padding-left:6px; white-space:pre-wrap;">${연락처.replace(/\n/g, "<br>")}</td></tr>` : ""}
+          ${item["연면적㎡"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>연면적</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["연면적㎡"]}</td></tr>` : ""}
+          ${item["세대"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>세대</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["세대"]}세대</td></tr>` : ""}
+          ${item["세대점검대상"] ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>세대점검</b></td><td style="padding-left:6px; white-space:pre-wrap;">${item["세대점검대상"]}</td></tr>` : ""}
+          <tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>설비</b></td><td style="padding-left:6px; white-space:pre-wrap;">옥내:${item["옥내"] || "-"}, SP:${item["S/P"] || "-"}, 가스:${item["가스"] || "-"}</td></tr>
+          ${건물현황 ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>건물현황</b></td><td style="padding-left:6px; white-space:pre-wrap;">${건물현황.replace(/\n/g, "<br>")}</td></tr>` : ""}
+          ${비고 ? `<tr><td style="text-align:right; vertical-align:top; padding-top:3px;"><b>비고</b></td><td style="padding-left:6px; white-space:pre-wrap;">${비고.replace(/\n/g, "<br>")}</td></tr>` : ""}
+        </tbody>
+        </table>
+      </div>`;
+
+    const infowindow = new kakao.maps.InfoWindow({ content, zIndex: 9999 });
+
+    kakao.maps.event.addListener(marker, 'click', () => {
+      if (openInfowindow && openInfowindow.getContent() === infowindow.getContent()) {
+        openInfowindow.close();
+        openInfowindow = null;
+      } else {
+        if (openInfowindow) openInfowindow.close();
+        infowindow.open(map, marker);
+
+        const latlng = marker.getPosition();
+        const proj = map.getProjection();
+        const point = proj.containerPointFromCoords(latlng);
+        point.y -= 100;
+        map.setCenter(proj.coordsFromContainerPoint(point));
+
+        openInfowindow = infowindow;
+      }
+    });
+
+    kakao.maps.event.addListener(marker, 'mouseover', () => {
+      if (hoverLabel) hoverLabel.setMap(null);
+      hoverLabel = new kakao.maps.CustomOverlay({
+        position: marker.getPosition(),
+        content: `<div class="label-overlay">${name}</div>`,
+        yAnchor: 2.0,
+        zIndex: 12
+      });
+      hoverLabel.setMap(map);
+    });
+
+    kakao.maps.event.addListener(marker, 'mouseout', () => {
+      if (hoverLabel) hoverLabel.setMap(null);
+    });
+
+    markers.push(marker);
+  });
+
+  updateLabelVisibility();
+  filteredData = filtered;
+}
 
     function getCustomMarkerIcon(type) {
       const size = new kakao.maps.Size(32, 32);
@@ -558,16 +580,16 @@ checkbox.type = "checkbox";
 
 // 🔍 해당 월 대상처이면서 이전에 체크된 대상만 true
 const isTargetOfSelectedMonth = markerType !== null;
-checkbox.checked = isTargetOfSelectedMonth && checkedLocations.has(name);
+const key = getKey(sheet, item);
+checkbox.checked = isTargetOfSelectedMonth && checkedLocations.has(key);
 
-// ✅ 체크박스를 사용자가 눌렀을 때만 상태 반영
 checkbox.addEventListener("change", () => {
   if (checkbox.checked) {
-    checkedLocations.add(name);
+    checkedLocations.add(key);
   } else {
-    checkedLocations.delete(name);
+    checkedLocations.delete(key);
   }
-  renderMarkers();  // 마커 다시 그리기
+  renderMarkers();
 });
 
     const label = document.createElement("span");
@@ -676,26 +698,22 @@ const marker = new kakao.maps.Marker({
 
 document.getElementById("uncheck-all").addEventListener("click", () => {
 // 1. 전체 대상처 Set 생성 (✅ geocodedData 기준 = 전체 대상 기준)
-const allNames = new Set();
+const allKeys = new Set();
 geocodedData.forEach(({ sheet, item }) => {
-  const name = item["월관리대상처"] || item["단타대상처"] || item["거래처명"] || "이름없음";
-  if (!name.includes("계약해지")) {
-    allNames.add(name);
+  const key = getKey(sheet, item);
+  if (!key.includes("계약해지")) {
+    allKeys.add(key);
   }
 });
 
-  // 2. 현재 체크된 대상처가 전체와 일치하는지 확인
-  const isAllChecked = checkedLocations.size === allNames.size &&
-    Array.from(allNames).every(name => checkedLocations.has(name));
+const isAllChecked = checkedLocations.size === allKeys.size &&
+  Array.from(allKeys).every(key => checkedLocations.has(key));
 
 if (isAllChecked) {
-  // 전체 해제
   checkedLocations.clear();
   document.getElementById("uncheck-all").textContent = "✅ 전체 선택";
 } else {
-  // 전체 선택
-  checkedLocations.clear();  // 기존 Set 비우고
-  allNames.forEach(name => checkedLocations.add(name));  // 다시 추가
+  checkedLocations = new Set(allKeys);
   document.getElementById("uncheck-all").textContent = "❌ 전체 해제";
 }
 
